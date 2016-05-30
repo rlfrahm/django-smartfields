@@ -8,7 +8,7 @@ from smartfields.processors.base import BaseFileProcessor
 from smartfields.utils import ProcessingError
 
 try:
-    from PIL import Image
+    from PIL import Image, ExifTags
 except ImportError:
     Image = None
 try:
@@ -292,6 +292,10 @@ class ImageProcessor(BaseFileProcessor):
         try:
             image = self.get_image(stream, scale=scale, format=format, **kwargs)
             image = self.resize(image, scale=scale, format=format, **kwargs)
+            # exif_data = image._getexif()
+            exif=dict((ExifTags.TAGS[k], v) for k, v in image._getexif().items() if k in ExifTags.TAGS)
+            if not exif['Orientation']:
+                image = image.rotate(90, expand=True)
             stream_out = self.convert(image, scale=scale, format=format, **kwargs)
             if stream_out is not None:
                 content = stream_out.getvalue()
