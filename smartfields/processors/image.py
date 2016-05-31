@@ -72,6 +72,24 @@ PILLOW_IMAGE_SUPPORT = {
     'TGA': (['tga', 'tpic'], ['RGB', 'RGBA'], None)
 }
 
+def flip_horizontal(im): return im.transpose(Image.FLIP_LEFT_RIGHT)
+def flip_vertical(im): return im.transpose(Image.FLIP_TOP_BOTTOM)
+def rotate_180(im): return im.transpose(Image.ROTATE_180)
+def rotate_90(im): return im.transpose(Image.ROTATE_90)
+def rotate_270(im): return im.transpose(Image.ROTATE_270)
+def transpose(im): return rotate_90(flip_horizontal(im))
+def transverse(im): return rotate_90(flip_vertical(im))
+orientation_funcs = [None,
+                 lambda x: x,
+                 flip_horizontal,
+                 rotate_180,
+                 flip_vertical,
+                 transpose,
+                 rotate_270,
+                 transverse,
+                 rotate_90
+                ]
+
 
 def _round(val):
     # emulate python3 way of rounding toward the even choice
@@ -260,17 +278,17 @@ class ImageProcessor(BaseFileProcessor):
     def convert(self, image, format=None, **kwargs):
         if format is None:
             return None
-        new_mode = format.get_mode(old_mode=image.mode)
-        if new_mode != image.mode:
-            if new_mode == 'P':
-                # TODO: expiremental, need some serious testing
-                palette_size = 256
-                if image.palette:
-                    palette_size = len(image.palette.getdata()[1]) // 3
-                image = image.convert(
-                    new_mode, palette=Image.ADAPTIVE, colors=palette_size)
-            else:
-                image = image.convert(new_mode)
+        # new_mode = format.get_mode(old_mode=image.mode)
+        # if new_mode != image.mode:
+        #     if new_mode == 'P':
+        #         # TODO: expiremental, need some serious testing
+        #         palette_size = 256
+        #         if image.palette:
+        #             palette_size = len(image.palette.getdata()[1]) // 3
+        #         image = image.convert(
+        #             new_mode, palette=Image.ADAPTIVE, colors=palette_size)
+        #     else:
+        #         image = image.convert(new_mode)
         if format != image.format:
             stream_out = six.BytesIO()
             image.save(stream_out, format=str(format), **format.save_kwargs)
@@ -292,10 +310,6 @@ class ImageProcessor(BaseFileProcessor):
         try:
             image = self.get_image(stream, scale=scale, format=format, **kwargs)
             image = self.resize(image, scale=scale, format=format, **kwargs)
-            # exif_data = image._getexif()
-            exif=dict((ExifTags.TAGS[k], v) for k, v in image._getexif().items() if k in ExifTags.TAGS)
-            if not exif['Orientation']:
-                image = image.rotate(90, expand=True)
             stream_out = self.convert(image, scale=scale, format=format, **kwargs)
             if stream_out is not None:
                 content = stream_out.getvalue()
